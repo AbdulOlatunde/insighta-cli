@@ -11,7 +11,7 @@ program
   .description("Insighta Labs+ CLI — demographic intelligence at your fingertips")
   .version("1.0.0");
 
-// ── Auth commands ──────────────────────────────────────────────────────────
+// Auth commands
 program
   .command("login")
   .description("Log in via GitHub OAuth")
@@ -27,7 +27,7 @@ program
   .description("Show the currently logged-in user")
   .action(whoami);
 
-// ── Profiles commands ──────────────────────────────────────────────────────
+// Profiles commands
 const profiles = program.command("profiles").description("Manage profiles");
 
 profiles

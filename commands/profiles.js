@@ -5,7 +5,7 @@ const Table = require("cli-table3");
 const ora = require("ora");
 const { getClient } = require("../utils/apiClient");
 
-// ── List profiles ──────────────────────────────────────────────────────────
+// List profiles
 const listProfiles = async (options) => {
   const spinner = ora("Fetching profiles...").start();
   try {
@@ -50,7 +50,7 @@ const listProfiles = async (options) => {
   }
 };
 
-// ── Get single profile ─────────────────────────────────────────────────────
+//  Get single profile
 const getProfile = async (id) => {
   const spinner = ora("Fetching profile...").start();
   try {
@@ -73,7 +73,7 @@ const getProfile = async (id) => {
   }
 };
 
-// ── Search profiles ────────────────────────────────────────────────────────
+// Search profiles
 const searchProfiles = async (query, options) => {
   const spinner = ora("Searching...").start();
   try {
@@ -102,7 +102,7 @@ const searchProfiles = async (query, options) => {
   }
 };
 
-// ── Create profile ─────────────────────────────────────────────────────────
+//  Create profile
 const createProfile = async (options) => {
   if (!options.name) {
     console.error(chalk.red("Error: --name is required"));
@@ -134,7 +134,7 @@ const createProfile = async (options) => {
   }
 };
 
-// ── Export profiles ────────────────────────────────────────────────────────
+// Export profiles
 const exportProfiles = async (options) => {
   const spinner = ora("Exporting profiles...").start();
   try {

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const { Command } = require("commander");
 const { login, logout, whoami } = require("../commands/auth");
 const {

@@ -1,7 +1,8 @@
 const http = require("http");
 const crypto = require("crypto");
 const axios = require("axios");
-const open = require("open");
+const open = (...args) =>
+  import("open").then((module) => module.default(...args));
 const chalk = require("chalk");
 const { saveCredentials, clearCredentials, loadCredentials } = require("../utils/credentials");
 const { BACKEND_URL } = require("../utils/apiClient");
@@ -21,7 +22,7 @@ const login = async () => {
     return;
   }
 
-  const state        = crypto.randomBytes(16).toString("hex");
+  const state = crypto.randomBytes(16).toString("hex");
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
 
@@ -41,8 +42,8 @@ const login = async () => {
     const server = http.createServer(async (req, res) => {
       if (!req.url.startsWith("/callback")) return;
 
-      const url    = new URL(req.url, `http://localhost:${CALLBACK_PORT}`);
-      const code   = url.searchParams.get("code");
+      const url = new URL(req.url, `http://localhost:${CALLBACK_PORT}`);
+      const code = url.searchParams.get("code");
       const retState = url.searchParams.get("state");
 
       res.writeHead(200, { "Content-Type": "text/html" });
@@ -95,7 +96,7 @@ const logout = async () => {
       { refresh_token: creds.refresh_token },
       { headers: { Authorization: `Bearer ${creds.access_token}` } }
     );
-  } catch (_) {}
+  } catch (_) { }
 
   clearCredentials();
   console.log(chalk.green("✓ Logged out successfully."));

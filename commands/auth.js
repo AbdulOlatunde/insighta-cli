@@ -39,61 +39,63 @@ const login = async () => {
     `&code_challenge_method=S256`;
 
   console.log(chalk.cyan("Opening GitHub in your browser..."));
+  console.log(chalk.gray(`Using redirect URI: ${redirectUri}`));
 
   let server;
 
   try {
     await new Promise((resolve, reject) => {
       server = http.createServer(async (req, res) => {
-        // Only handle the callback path
-        if (!req.url.startsWith(CALLBACK_PATH)) {
+        const fullUrl = new URL(req.url, `http://localhost:${CALLBACK_PORT}`);
+        
+        // === DEBUG LOGS ===
+        console.log(chalk.blue(`→ Incoming ${req.method} ${fullUrl.pathname}${fullUrl.search}`));
+
+        if (!fullUrl.pathname.includes(CALLBACK_PATH)) {
+          console.log(chalk.yellow(`Path mismatch: ${fullUrl.pathname}`));
           res.writeHead(404);
           res.end("Not found");
           return;
         }
 
-        // GitHub uses GET for callback
-        if (req.method !== "GET") {
-          res.writeHead(405, { "Allow": "GET" });
-          res.end("Method Not Allowed");
-          return;
+        const code = fullUrl.searchParams.get("code");
+        const retState = fullUrl.searchParams.get("state");
+        const error = fullUrl.searchParams.get("error");
+
+        if (error) {
+          console.error(chalk.red(`GitHub Error: ${error}`));
+          res.writeHead(400, { "Content-Type": "text/html" });
+          res.end(`<h2>OAuth Error: ${error}</h2>`);
+          return reject(new Error(error));
+        }
+
+        if (!code) {
+          console.error(chalk.red("No code received from GitHub"));
+          res.writeHead(400, { "Content-Type": "text/html" });
+          res.end("<h2>No authorization code received</h2>");
+          return reject(new Error("No code"));
+        }
+
+        console.log(chalk.green("Authorization code received!"));
+
+        // Send success page to browser
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(`
+          <html>
+            <body>
+              <h2>Login successful!</h2>
+              <p>You can now close this tab and return to the terminal.</p>
+            </body>
+          </html>
+        `);
+
+        if (retState !== state) {
+          console.error(chalk.red("State mismatch!"));
+          return reject(new Error("State mismatch"));
         }
 
         try {
-          const url = new URL(req.url, `http://localhost:${CALLBACK_PORT}`);
-          const code = url.searchParams.get("code");
-          const retState = url.searchParams.get("state");
-          const error = url.searchParams.get("error");
-
-          if (error) {
-            throw new Error(`GitHub OAuth error: ${error}`);
-          }
-
-          if (!code) {
-            throw new Error("No authorization code received");
-          }
-
-          // Send success page to browser
-          res.writeHead(200, { "Content-Type": "text/html" });
-          res.end(`
-            <html>
-              <head><meta charset="utf-8"><title>Login Successful</title></head>
-              <body>
-                <h2>Login successful!</h2>
-                <p>You can now close this tab and return to the terminal.</p>
-              </body>
-            </html>
-          `);
-
-          // Validate state
-          if (retState !== state) {
-            console.error(chalk.red("State mismatch. Possible CSRF attack."));
-            throw new Error("State mismatch");
-          }
-
-          console.log(chalk.gray("Exchanging code for token..."));
-
-          // Send code to backend
+          console.log(chalk.gray("Sending code to backend..."));
           const response = await axios.post(`${BACKEND_URL}/auth/github/cli-callback`, {
             code,
             code_verifier: codeVerifier,
@@ -101,43 +103,29 @@ const login = async () => {
           });
 
           const { access_token, refresh_token, user } = response.data;
-
           saveCredentials({ access_token, refresh_token, user });
-          
+
           console.log(chalk.green(`\n✓ Successfully logged in as @${user.username}`));
           console.log(chalk.gray(`   Role: ${user.role || 'N/A'}`));
           
           resolve();
-
         } catch (err) {
-          console.error(chalk.red("Login failed:"), err.response?.data?.message || err.message);
+          console.error(chalk.red("Backend error:"), err.response?.data?.message || err.message);
           reject(err);
         } finally {
-          // Close server after a short delay so browser can load the success page
-          setTimeout(() => server?.close(), 800);
+          setTimeout(() => server?.close(), 1500);
         }
       });
 
       server.listen(CALLBACK_PORT, "127.0.0.1", () => {
-        console.log(chalk.gray(`Local callback server running on http://localhost:${CALLBACK_PORT}`));
+        console.log(chalk.green(`Local server ready on http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`));
         
-        open(authUrl).catch((err) => {
-          console.log(chalk.yellow("Could not auto-open browser."));
-          console.log(chalk.yellow("Please visit this URL manually:\n") + authUrl);
+        open(authUrl).catch(() => {
+          console.log(chalk.yellow("Failed to open browser. Please open this URL manually:"));
+          console.log(authUrl);
         });
       });
 
-      server.on("error", (err) => {
-        if (err.code === "EADDRINUSE") {
-          console.error(chalk.red(`Port ${CALLBACK_PORT} is already in use.`));
-        }
-        reject(err);
-      });
-
-      // Timeout safety
-      setTimeout(() => {
-        reject(new Error("Login timed out. Please try again."));
-      }, 5 * 60 * 1000); // 5 minutes
     });
   } catch (err) {
     console.error(chalk.red("Authentication failed:"), err.message);
@@ -146,7 +134,7 @@ const login = async () => {
   }
 };
 
-// (logout and whoami functions)
+// logout and whoami functions
 const logout = async () => { /* your existing code */ };
 const whoami = () => { /* your existing code */ };
 
